@@ -60,7 +60,3 @@ npm run preview
 This tool utilizes open data provided by the Vermont Center for Geographic Information (VCGI):
 -   **Town Boundaries**: [VT Open Geodata Portal](https://geodata.vermont.gov/datasets/3f464b0e1980450e9026430a635bff0a_0/)
 -   **Alias Table**: Custom curated list of villages, hamlets, and historical names mapping to official towns.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
