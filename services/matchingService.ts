@@ -118,20 +118,50 @@ const jaroWinkler = (s1, s2) => {
 const preprocess = (str) => {
   if (!str) return "";
   let s = str.trim().toLowerCase();
-  
-  s = s.replace(/\\bst(\\.|\\s+)/g, "saint ");
-  s = s.replace(/\\bmt(\\.|\\s+)/g, "mount ");
-  s = s.replace(/\\bvtg(\\.|\\s+)/g, "village ");
-  s = s.replace(/\\bft(\\.|\\s+)/g, "fort ");
-  s = s.replace(/\\bjct(\\.|\\s+)/g, "junction ");
-  
-  s = s.replace(/^n(\\.|\\s+|$)/, "north ");
-  s = s.replace(/^s(\\.|\\s+|$)/, "south ");
-  s = s.replace(/^e(\\.|\\s+|$)/, "east ");
-  s = s.replace(/^w(\\.|\\s+|$)/, "west ");
 
-  return s.replace(/\\s+/g, ' ').trim();
+  // 1. Saint/Mount/Directional expansions
+  s = s.replace(/\\\\bst(\\\\.|\\\\s+)/g, "saint ");
+  s = s.replace(/\\\\bmt(\\\\.|\\\\s+)/g, "mount ");
+  s = s.replace(/\\\\bvtg(\\\\.|\\\\s+)/g, "village ");
+  s = s.replace(/\\\\bft(\\\\.|\\\\s+)/g, "fort ");
+  s = s.replace(/\\\\bjct(\\\\.|\\\\s+)/g, "junction ");
+  
+  s = s.replace(/^n(\\\\.|\\\\s+|$)/, "north ");
+  s = s.replace(/^s(\\\\.|\\\\s+|$)/, "south ");
+  s = s.replace(/^e(\\\\.|\\\\s+|$)/, "east ");
+  s = s.replace(/^w(\\\\.|\\\\s+|$)/, "west ");
+
+  // 2. Remove state and zip (e.g., "peru vt 05152" -> "peru")
+  s = s.replace(/\\\\bvt\\\\s*\\\\d{5}(-\\\\d{4})?\\\\b/g, "");
+
+  // 3. Address noise prefixes (APT, UNIT, SMC, RR, etc.)
+  const noiseWords = [
+    'apt', 'unit', 'ste', 'suite', 'box', 'po box', 'bx', 'b0x', 'rd', 'rr', 
+    'rfd', 'rt', 'lot', 'bldg', 'rm', 'pmb', 'star rt', 'unt', 'un', 'u', 'smc',
+    'condo', 'flr', 'floor', 'garage', 'garage apt'
+  ];
+  const noiseRegex = new RegExp('^(' + noiseWords.join('|') + ')\\\\s*#?\\\\s*[a-z0-9-]+\\\\b', 'g');
+  s = s.replace(noiseRegex, "");
+  
+  // Handle concatenated noise like "APT101"
+  s = s.replace(/^(apt|unit|un|unt|bx|ste|box|po box|b0x)\\\\d+[a-z]?/, "");
+
+  // 4. Remove leading numbers or street fragments (e.g., "105 ISLAND POND")
+  s = s.replace(/^[a-z0-9-]+\\\\s+/, " ");
+  
+  // 5. Remove care-of markers (e.g., "%BOLIN RUTLAND")
+  s = s.replace(/^%[a-z]+\\\\s+/, "");
+
+  // 6. Remove street suffixes and the word immediately before them (e.g., "BIXBY RD")
+  s = s.replace(/\\\\b\\\\w+\\\\s+(rd|ave|dr|ln|ct|pl|blvd|pkwy|hwy|rte|route)\\\\b/g, "");
+
+  return s.replace(/\\\\s+/g, ' ').trim();
 };
+
+const BLOCKLIST = [
+  'portland', 'boston', 'orlando', 'west', 'north', 'east', 'south', 
+  'ave', 'bedford', 'benn', 'bradenton', 'che'
+];
 
 self.onmessage = (e) => {
   const { uniqueValues, lookupData } = e.data;
@@ -144,14 +174,11 @@ self.onmessage = (e) => {
     
     for (const alias of aliasKeys) {
       if (Math.abs(alias.length - input.length) > 5) continue;
-      
       const score = jaroWinkler(input, alias);
-      
       if (score > maxScore) {
         maxScore = score;
         bestMatch = alias;
       }
-      
       if (score === 1) break; 
     }
     return { bestMatch, maxScore };
@@ -167,8 +194,27 @@ self.onmessage = (e) => {
     let baseGeoid = "";
     let baseOptions = null;
 
+    // Blocklist check
+    if (BLOCKLIST.includes(cleanName) || BLOCKLIST.includes(rawNormalized)) {
+      results[original] = { baseStatus, baseOfficial, baseGeoid, baseOptions };
+      return;
+    }
+
+    // Attempt direct match
     let match = lookupData.aliases[cleanName];
     
+    // Fallback: Check if string ends with a known alias (useful for "Street Name Town")
+    if (!match && cleanName.includes(' ')) {
+      const parts = cleanName.split(' ');
+      for (let i = 1; i < parts.length; i++) {
+        const potential = parts.slice(i).join(' ');
+        if (lookupData.aliases[potential]) {
+          match = lookupData.aliases[potential];
+          break;
+        }
+      }
+    }
+
     if (!match && cleanName !== rawNormalized) {
         match = lookupData.aliases[rawNormalized];
     }
@@ -178,17 +224,14 @@ self.onmessage = (e) => {
         baseStatus = "ambiguous";
         baseOptions = match.options;
       } else if (typeof match === 'string') {
-        const officialNameLower = match.toLowerCase();
-        baseStatus = (cleanName === officialNameLower) ? "exact" : "alias";
+        baseStatus = (cleanName === match.toLowerCase()) ? "exact" : "alias";
         baseOfficial = match;
         baseGeoid = lookupData.towns[match]?.geoid || "";
       }
     } else if (cleanName.length > 2) {
       const { bestMatch, maxScore } = findBestMatch(cleanName);
-      
       if (bestMatch && maxScore > 0.85) {
         const fuzzyMatch = lookupData.aliases[bestMatch];
-        
         if (typeof fuzzyMatch === 'string') {
           baseStatus = "fuzzy";
           baseOfficial = fuzzyMatch;

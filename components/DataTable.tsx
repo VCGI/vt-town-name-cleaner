@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Activity, X, Edit3 } from 'lucide-react';
+import React, { useState, useRef, useMemo } from 'react';
+import { Activity, X, Edit3, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ProcessedRow, MatchStatus, LookupData } from '../types';
 import { StatusBadge } from './StatusBadge';
@@ -19,6 +19,21 @@ interface DataTableProps {
   casing: 'UPPER' | 'MIXED';
 }
 
+const COL_WIDTHS = {
+  status: '140px',
+  official: '280px',
+  input: '200px',
+  geoid: '100px',
+  extra: '160px',
+  original: '200px'
+};
+
+type SortConfig = {
+  key: string;
+  direction: 'asc' | 'desc' | null;
+  type: 'base' | 'extra' | 'original';
+};
+
 export const DataTable: React.FC<DataTableProps> = ({
   results,
   lookupData,
@@ -32,12 +47,49 @@ export const DataTable: React.FC<DataTableProps> = ({
   casing
 }) => {
   const [editingRow, setEditingRow] = useState<number | null>(null);
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: '', direction: null, type: 'base' });
   const parentRef = useRef<HTMLDivElement>(null);
 
   const filteredTowns = Object.keys(lookupData.towns).sort();
 
+  // Sorting Logic
+  const sortedResults = useMemo(() => {
+    if (!sortConfig.direction) return results;
+
+    return [...results].sort((a, b) => {
+      let aVal: any = "";
+      let bVal: any = "";
+
+      if (sortConfig.type === 'base') {
+        aVal = a[sortConfig.key as keyof ProcessedRow] || "";
+        bVal = b[sortConfig.key as keyof ProcessedRow] || "";
+      } else if (sortConfig.type === 'extra') {
+        aVal = lookupData.towns[a.official]?.[sortConfig.key] || "";
+        bVal = lookupData.towns[b.official]?.[sortConfig.key] || "";
+      } else if (sortConfig.type === 'original') {
+        const idx = parseInt(sortConfig.key);
+        aVal = a.originalRow[idx] || "";
+        bVal = b.originalRow[idx] || "";
+      }
+
+      if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [results, sortConfig, lookupData]);
+
+  const requestSort = (key: string, type: 'base' | 'extra' | 'original') => {
+    let direction: 'asc' | 'desc' | null = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    } else if (sortConfig.key === key && sortConfig.direction === 'desc') {
+      direction = null;
+    }
+    setSortConfig({ key, direction, type });
+  };
+
   const rowVirtualizer = useVirtualizer({
-    count: results.length,
+    count: sortedResults.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 54, 
     overscan: 10,
@@ -62,6 +114,13 @@ export const DataTable: React.FC<DataTableProps> = ({
     return val;
   };
 
+  const SortIcon = ({ colKey }: { colKey: string }) => {
+    if (sortConfig.key !== colKey || !sortConfig.direction) return <ArrowUpDown size={14} className="ml-1 opacity-20" />;
+    return sortConfig.direction === 'asc' 
+      ? <ArrowUp size={14} className="ml-1 text-emerald-600" /> 
+      : <ArrowDown size={14} className="ml-1 text-emerald-600" />;
+  };
+
   return (
     <div className="rounded-2xl border border-gray-200 overflow-hidden shadow-sm bg-white flex flex-col h-[700px]">
       <div className="flex items-center justify-between bg-gray-50 px-6 py-4 border-b border-gray-200 flex-shrink-0">
@@ -75,7 +134,7 @@ export const DataTable: React.FC<DataTableProps> = ({
             ) : 'PREVIEWING CLEANED DATA'} 
           </h3>
           <span className="ml-2 text-xs font-medium text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-            {results.length.toLocaleString()} rows
+            {sortedResults.length.toLocaleString()} rows
           </span>
         </div>
         {filterType && (
@@ -93,23 +152,66 @@ export const DataTable: React.FC<DataTableProps> = ({
         className="overflow-auto relative flex-1 custom-scrollbar"
         style={{ contain: 'strict' }}
       >
-        <table className="w-full text-left text-[13px] border-collapse min-w-max relative">
+        <table 
+          className="w-full text-left text-[13px] border-collapse min-w-max relative"
+          style={{ tableLayout: 'fixed' }}
+        >
           <thead className="bg-gray-50 sticky top-0 z-20 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
             <tr>
-              <th className="px-5 py-4 font-bold uppercase tracking-wider text-gray-500 sticky left-0 bg-gray-50 z-30 border-b border-gray-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">Status</th>
-              <th className="px-5 py-4 font-bold uppercase tracking-wider text-gray-500 border-b border-gray-200">Official Town</th>
-              <th className="px-5 py-4 font-bold uppercase tracking-wider text-gray-500 border-b border-gray-200">Input Value</th>
-              <th className="px-5 py-4 font-bold uppercase tracking-wider text-gray-500 border-b border-gray-200">GEOID</th>
+              <th 
+                style={{ width: COL_WIDTHS.status }} 
+                className="px-5 py-4 font-bold uppercase tracking-wider text-gray-500 sticky left-0 bg-gray-50 z-30 border-b border-gray-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] cursor-pointer hover:bg-gray-100 transition-colors"
+                onClick={() => requestSort('status', 'base')}
+              >
+                <div className="flex items-center">Status <SortIcon colKey="status" /></div>
+              </th>
+              <th 
+                style={{ width: COL_WIDTHS.official }} 
+                className="px-5 py-4 font-bold uppercase tracking-wider text-gray-500 border-b border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
+                onClick={() => requestSort('official', 'base')}
+              >
+                <div className="flex items-center">Official Town <SortIcon colKey="official" /></div>
+              </th>
+              <th 
+                style={{ width: COL_WIDTHS.input }} 
+                className="px-5 py-4 font-bold uppercase tracking-wider text-gray-500 border-b border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
+                onClick={() => requestSort('originalValue', 'base')}
+              >
+                <div className="flex items-center">Input Value <SortIcon colKey="originalValue" /></div>
+              </th>
+              <th 
+                style={{ width: COL_WIDTHS.geoid }} 
+                className="px-5 py-4 font-bold uppercase tracking-wider text-gray-500 border-b border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
+                onClick={() => requestSort('geoid', 'base')}
+              >
+                <div className="flex items-center">GEOID <SortIcon colKey="geoid" /></div>
+              </th>
               
               {extraFields.map(fieldId => (
-                <th key={fieldId} className="px-5 py-4 font-bold uppercase tracking-wider text-[#003865] bg-[#003865]/5 border-b border-gray-200">
-                  {EXTRA_FIELDS.find(f => f.id === fieldId)?.label}
+                <th 
+                  key={fieldId} 
+                  style={{ width: COL_WIDTHS.extra }} 
+                  className="px-5 py-4 font-bold uppercase tracking-wider text-[#003865] bg-[#003865]/5 border-b border-gray-200 cursor-pointer hover:bg-[#003865]/10 transition-colors"
+                  onClick={() => requestSort(fieldId, 'extra')}
+                >
+                  <div className="flex items-center">
+                    {EXTRA_FIELDS.find(f => f.id === fieldId)?.label}
+                    <SortIcon colKey={fieldId} />
+                  </div>
                 </th>
               ))}
 
               {fileHeaders.map((header, idx) => (
-                <th key={idx} className={`px-5 py-4 font-bold uppercase tracking-wider border-b border-gray-200 ${idx === targetColIdx ? 'text-emerald-700 bg-emerald-50/50' : 'text-gray-400'}`}>
-                  {header || `Column ${idx+1}`}
+                <th 
+                  key={idx} 
+                  style={{ width: COL_WIDTHS.original }} 
+                  className={`px-5 py-4 font-bold uppercase tracking-wider border-b border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors ${idx === targetColIdx ? 'text-emerald-700 bg-emerald-50/50' : 'text-gray-400'}`}
+                  onClick={() => requestSort(idx.toString(), 'original')}
+                >
+                  <div className="flex items-center">
+                    {header || `Column ${idx+1}`}
+                    <SortIcon colKey={idx.toString()} />
+                  </div>
                 </th>
               ))}
             </tr>
@@ -122,7 +224,7 @@ export const DataTable: React.FC<DataTableProps> = ({
             )}
             
             {virtualItems.map((virtualRow) => {
-              const res = results[virtualRow.index];
+              const res = sortedResults[virtualRow.index];
               return (
                 <tr 
                   key={res.index} 
@@ -134,7 +236,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                     <StatusBadge status={res.status} />
                   </td>
 
-                  <td className="px-5 py-2 relative min-w-[220px]">
+                  <td className="px-5 py-2 relative overflow-hidden">
                     {editingRow === res.index ? (
                       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm" onClick={(e) => { e.stopPropagation(); setEditingRow(null); }}>
                         <div className="bg-white p-5 border border-gray-200 rounded-2xl shadow-2xl flex flex-col w-[360px]" onClick={e => e.stopPropagation()}>
@@ -165,7 +267,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                     ) : (
                       <div onClick={() => setEditingRow(res.index)} className="flex items-center justify-between gap-3 cursor-pointer py-2 px-3 -mx-3 rounded-lg hover:bg-white border border-transparent hover:border-gray-200 hover:shadow-sm transition-all group/cell">
                         {res.status === 'ambiguous' && res.options ? (
-                          <div className="flex flex-wrap gap-1.5">
+                          <div className="flex flex-wrap gap-1.5 overflow-hidden">
                             {res.options.map(opt => (
                               <button key={opt} onClick={(e) => { e.stopPropagation(); onTownSelection(res.index, opt, 'resolved'); }}
                                 className="rounded-md border border-[#FFB81C] bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-800 hover:bg-[#FFB81C] hover:text-white transition-colors shadow-sm"
@@ -174,10 +276,10 @@ export const DataTable: React.FC<DataTableProps> = ({
                           </div>
                         ) : (
                           <>
-                            <span className={`font-bold tracking-tight text-[13px] ${res.status === 'exact' ? 'text-gray-900' : res.status === 'fuzzy' ? 'text-blue-700 underline decoration-blue-200 underline-offset-2' : res.status === 'not_found' ? 'text-gray-400 italic' : 'text-gray-800'}`}>
+                            <span className={`truncate font-bold tracking-tight text-[13px] ${res.status === 'exact' ? 'text-gray-900' : res.status === 'fuzzy' ? 'text-blue-700 underline decoration-blue-200 underline-offset-2' : res.status === 'not_found' ? 'text-gray-400 italic' : 'text-gray-800'}`}>
                               {formatText(res.official) || "Click to set manually..."}
                             </span>
-                            <div className="opacity-0 group-hover/cell:opacity-100 text-gray-400 transition-opacity bg-gray-100 p-1 rounded">
+                            <div className="shrink-0 opacity-0 group-hover/cell:opacity-100 text-gray-400 transition-opacity bg-gray-100 p-1 rounded">
                               <Edit3 size={14} />
                             </div>
                           </>
@@ -186,25 +288,25 @@ export const DataTable: React.FC<DataTableProps> = ({
                     )}
                   </td>
 
-                  <td className="px-5 py-3 font-semibold text-gray-600 bg-gray-50/50 min-w-[160px]">
+                  <td className="px-5 py-3 font-semibold text-gray-600 bg-gray-50/50 truncate">
                     {res.originalValue}
                   </td>
 
-                  <td className="px-5 py-3 font-mono text-[11px] font-bold text-gray-500 min-w-[100px]">
+                  <td className="px-5 py-3 font-mono text-[11px] font-bold text-gray-500 truncate">
                     {res.geoid || "—"}
                   </td>
 
                   {extraFields.map(fieldId => {
                     const val = lookupData.towns[res.official]?.[fieldId];
                     return (
-                      <td key={fieldId} className="px-5 py-3 font-medium text-gray-700 bg-[#003865]/[0.02]">
+                      <td key={fieldId} className="px-5 py-3 font-medium text-gray-700 bg-[#003865]/[0.02] truncate">
                         {(val !== undefined && val !== null && val !== "") ? formatValue(val) : <span className="text-gray-300">—</span>}
                       </td>
                     );
                   })}
 
                   {res.originalRow.map((cell, cIdx) => (
-                    <td key={cIdx} className={`px-5 py-3 text-gray-500 truncate max-w-[200px] ${cIdx === targetColIdx ? 'bg-emerald-50/30 text-gray-800 font-medium' : ''}`} title={cell?.toString()}>
+                    <td key={cIdx} className={`px-5 py-3 text-gray-500 truncate ${cIdx === targetColIdx ? 'bg-emerald-50/30 text-gray-800 font-medium' : ''}`} title={cell?.toString()}>
                       {cell?.toString() || ""}
                     </td>
                   ))}
