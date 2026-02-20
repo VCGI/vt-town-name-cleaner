@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
-import { Info, Activity, FileText, ExternalLink, Database, ArrowRight, Download, CheckCircle2, Copy, MapPin } from 'lucide-react';
+import { 
+  Info, Activity, FileText, ExternalLink, Database, 
+  ArrowRight, Download, CheckCircle2, Copy, MapPin, 
+  Github 
+} from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 import { RAW_DATA_RESOURCES, VT_GREEN } from '../constants';
 
@@ -64,7 +68,7 @@ export const AboutPage: React.FC<{ onReturn: () => void }> = ({ onReturn }) => {
       
       <div className="prose prose-emerald max-w-none text-gray-600 text-lg mb-12 space-y-4">
         <p>
-          The Vermont Town Name Cleaner is a utility designed to help data practitioners standardize messy, inconsistent, or aliased town names against official state geographic identifiers. 
+          The Vermont Town Name Cleaner is a utility designed to help data practitioners standardize messy, inconsistent, or aliased town names against official state geographic identifiers.
         </p>
         <p>
           <strong>How it works:</strong> The tool cross-references your uploaded data against a comprehensive <em>alias table</em> maintained by the state. This means it automatically resolves common misspellings, local colloquialisms, historical designations, and <strong>unincorporated villages to their official host municipalities</strong> (for example, mapping "Quechee" to its official town of "Hartford" or "Waterbury Center" to "Waterbury").
@@ -137,6 +141,20 @@ export const AboutPage: React.FC<{ onReturn: () => void }> = ({ onReturn }) => {
                 <ExternalLink size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
               </h4>
               <p className="text-sm text-gray-500 font-medium">Access the official hosted feature layer and GIS data for Vermont town boundaries on the Open Geodata Portal.</p>
+            </div>
+        </a>
+
+        <a href="https://github.com/VCGI/vt-town-name-cleaner" target="_blank" rel="noopener noreferrer" 
+            className="flex flex-col md:flex-row items-start md:items-center gap-5 p-5 rounded-2xl border-2 border-gray-100 hover:border-gray-800 hover:bg-gray-50 transition-all group">
+            <div className="bg-gray-100 text-gray-800 p-3 rounded-xl group-hover:scale-110 transition-transform">
+              <Github size={24} />
+            </div>
+            <div className="flex-1">
+              <h4 className="font-bold text-gray-900 text-lg mb-1 group-hover:text-gray-800 flex items-center gap-2">
+                Source Code on GitHub
+                <ExternalLink size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+              </h4>
+              <p className="text-sm text-gray-500 font-medium">View the project repository, report issues, or contribute to this tool on GitHub.</p>
             </div>
         </a>
       </div>
