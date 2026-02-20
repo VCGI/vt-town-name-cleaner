@@ -1,0 +1,5 @@
+{
+  "name": "Vermont Town Name Cleaner v0.1",
+  "description": "A tool for standardizing and cleaning Vermont town names against official state geographic identifiers using fuzzy matching and alias resolution.",
+  "requestFramePermissions": []
+}
