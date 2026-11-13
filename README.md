@@ -26,7 +26,7 @@ A web utility that standardizes messy Vermont town names against official state 
 
 ### Prerequisites
 
--   Node.js 20.19 or later
+-   Node.js 22.12 or later
 -   npm
 
 ### Install and run
