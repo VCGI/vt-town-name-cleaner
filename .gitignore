@@ -123,3 +123,6 @@ dist-ssr
 
 # repomix
 repomix-output.xml
+
+# Playwright MCP scratch output
+.playwright-mcp/
