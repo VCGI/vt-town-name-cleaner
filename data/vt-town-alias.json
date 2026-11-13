@@ -8168,6 +8168,14 @@
     "wte rvr junc": "HARTFORD",
     "wyndsor": "WINDSOR",
     "yaw brook cabin": "WOODFORD",
-    "ymca meeting waters day camp": "SPRINGFIELD"
+    "ymca meeting waters day camp": "SPRINGFIELD",
+    "city of barre": "BARRE CITY",
+    "town of barre": "BARRE TOWN",
+    "city of rutland": "RUTLAND CITY",
+    "town of rutland": "RUTLAND TOWN",
+    "city of saint albans": "SAINT ALBANS CITY",
+    "town of saint albans": "SAINT ALBANS TOWN",
+    "city of newport": "NEWPORT CITY",
+    "town of newport": "NEWPORT TOWN"
   }
 }
