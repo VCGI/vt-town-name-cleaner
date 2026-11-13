@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import * as XLSX from 'xlsx';
 import { FileSpreadsheet, ArrowRight, Table, AlertCircle, X } from 'lucide-react';
 import { VT_GREEN, VT_BLUE } from '../constants';
 
@@ -17,13 +18,13 @@ export const ImportWizard: React.FC<ImportWizardProps> = ({ workbook, fileName, 
   useEffect(() => {
     if (!workbook || !selectedSheet) return;
     const ws = workbook.Sheets[selectedSheet];
-    const data = window.XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+    const data = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1, defval: "" });
     setPreviewData(data.slice(0, 15)); 
   }, [workbook, selectedSheet]);
 
   const handleConfirm = () => {
     const ws = workbook.Sheets[selectedSheet];
-    const fullData = window.XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+    const fullData = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1, defval: "" });
     
     const cleanData = fullData.slice(headerRow - 1);
     

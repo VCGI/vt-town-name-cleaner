@@ -9,13 +9,14 @@ export type MatchStatus =
 
 export interface TownData {
   geoid: string;
-  county?: string;
-  latitude?: number;
-  longitude?: number;
-  ct_code?: string;
-  mcode?: string;
-  aoe_code?: string;
-  rpc?: string;
+  official_name?: string;
+  county?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  ct_code?: string | null;
+  mcode?: string | null;
+  aoe_code?: string | null;
+  rpc?: string | null;
   [key: string]: any;
 }
 
@@ -41,10 +42,4 @@ export interface ProcessedRow {
 export interface ExtraField {
   id: string;
   label: string;
-}
-
-declare global {
-  interface Window {
-    XLSX: any;
-  }
 }

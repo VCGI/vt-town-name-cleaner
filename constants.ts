@@ -1,7 +1,6 @@
 import { ExtraField } from './types';
 
 export const APP_TITLE = "Vermont Town Name Cleaner";
-export const DATA_URL = "https://s3.us-east-2.amazonaws.com/vtopendata-prd/Boundaries/vt-town-alias.json";
 
 export const VT_GREEN = "#006039";
 export const VT_BLUE = "#003865";

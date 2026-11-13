@@ -10,7 +10,8 @@ The Vermont Town Name Cleaner is a Single Page Application (SPA) built with **Re
 *   **Language**: TypeScript
 *   **Build Tool**: Vite
 *   **Styling**: Tailwind CSS
-*   **File Parsing**: SheetJS (`xlsx`)
+*   **File Parsing**: SheetJS (`xlsx`), bundled at build time
+*   **Testing**: Vitest
 *   **Virtualization**: `@tanstack/react-virtual`
 *   **Icons**: Lucide React
 
@@ -21,20 +22,25 @@ The application uses a centralized state management approach via `useReducer` lo
 ### Key State Objects
 
 *   **`fileData`**: Raw 2D array of the uploaded spreadsheet.
-*   **`lookupData`**: JSON object containing official town metadata and the alias/fuzzy matching dictionary loaded from an external S3 bucket.
+*   **`lookupData`**: JSON object containing official town metadata and the alias/fuzzy matching dictionary, bundled from `data/vt-town-alias.json` and loaded on demand as its own chunk.
 *   **`results`**: Array of `ProcessedRow` objects representing the cleaning status of each row.
 *   **`manualOverrides`** & **`ambiguousChoices`**: Dictionaries tracking user interventions.
 
 ## Data Processing Pipeline
 
-The core logic resides in `services/matchingService.ts`.
+The core logic is split across three files in `services/`:
+
+*   **`matching.ts`**: Pure matching functions (`preprocess`, `jaroWinkler`, `createMatcher`). No browser APIs, so it is fully unit-tested.
+*   **`matchWorker.ts`**: A thin Web Worker entry point that runs a matcher over the unique values.
+*   **`matchingService.ts`**: Starts the worker, joins its results back onto the original rows, and applies manual overrides.
 
 1.  **Ingestion**: Files are parsed using SheetJS into a generic 2D array.
-2.  **Worker Offloading**: To prevent UI blocking, the heavy lifting of string matching occurs in a **Web Worker**. The worker script is defined as a string within `matchingService.ts` and instantiated as a Blob.
-3.  **Matching Logic**:
-    *   **Normalization**: Input strings are trimmed, lowercased, and common prefixes (Mt, St, Ft, N, S, E, W) are expanded (Mount, Saint, Fort, North, etc.).
-    *   **Direct Lookup**: Checks against the `aliases` dictionary.
-    *   **Fuzzy Matching**: If no direct match is found, the **Jaro-Winkler** distance algorithm compares the input against all known aliases. A threshold of `0.85` is used for fuzzy matches.
+2.  **Worker Offloading**: To prevent UI blocking, string matching runs in a **Web Worker** (`matchWorker.ts`, bundled by Vite).
+3.  **Matching Logic** (in order; the first step that matches wins):
+    *   **Direct Lookup**: The trimmed, lowercased input is checked against the `aliases` dictionary as-is. Normalization only runs if this misses, so a name that already matches is never altered.
+    *   **Normalization**: Common abbreviations are expanded (St, Mt, Ft, Jct, N/S/E/W become Saint, Mount, Fort, Junction, North, etc.), and ZIP codes, unit/box prefixes, house numbers, care-of markers, and street names are stripped. A blocklist of generic names (e.g. "west", "boston") is never matched.
+    *   **Lookup on the normalized name**, then a **trailing-words** fallback for inputs like "main st peru".
+    *   **Fuzzy Matching**: If there is still no match, the **Jaro-Winkler** distance algorithm compares the input against all known aliases. A threshold of `0.85` is used for fuzzy matches.
 4.  **Result Aggregation**: The worker returns a map of unique value matches, which is then re-joined with the original row data in the main thread.
 
 ## Components

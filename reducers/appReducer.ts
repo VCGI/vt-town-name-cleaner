@@ -2,7 +2,6 @@ import { LookupData, MatchStatus, ProcessedRow } from '../types';
 
 export interface AppState {
   lookupData: LookupData | null;
-  xlsxReady: boolean;
   loading: boolean;
   error: string | null;
 
@@ -26,7 +25,6 @@ export interface AppState {
 
 export const initialState: AppState = {
   lookupData: null,
-  xlsxReady: false,
   loading: true,
   error: null,
   workbook: null,
@@ -46,7 +44,6 @@ export const initialState: AppState = {
 
 export type AppAction =
   | { type: 'INIT_DATA_LOADED'; payload: LookupData }
-  | { type: 'XLSX_READY' }
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'LOAD_FILE_PREVIEW'; payload: { workbook: any; fileName: string } }
   | { type: 'CONFIRM_IMPORT'; payload: { data: any[][]; selectedColumn: string } }
@@ -68,13 +65,7 @@ export const appReducer = (state: AppState, action: AppAction): AppState => {
       return { 
         ...state, 
         lookupData: action.payload,
-        loading: !state.xlsxReady 
-      };
-    case 'XLSX_READY':
-      return { 
-        ...state, 
-        xlsxReady: true,
-        loading: !state.lookupData 
+        loading: false
       };
     case 'SET_ERROR':
       return { ...state, error: action.payload };
