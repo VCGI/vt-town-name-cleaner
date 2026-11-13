@@ -66,7 +66,7 @@ export const AboutPage: React.FC<{ onReturn: () => void }> = ({ onReturn }) => {
         <h2 className="text-3xl font-black text-gray-900 tracking-tight">About the Cleaner</h2>
       </div>
       
-      <div className="prose prose-emerald max-w-none text-gray-600 text-lg mb-12 space-y-4">
+      <div className="max-w-none text-gray-600 text-lg mb-12 space-y-4">
         <p>
           The Vermont Town Name Cleaner is a utility designed to help data practitioners standardize messy, inconsistent, or aliased town names against official state geographic identifiers.
         </p>

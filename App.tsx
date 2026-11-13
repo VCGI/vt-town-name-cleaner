@@ -1,6 +1,8 @@
 import React, { useEffect, useCallback, useMemo, useReducer } from 'react';
 import { MapPin } from 'lucide-react';
-import { DATA_URL, VT_GREEN, EXTRA_FIELDS } from './constants';
+import * as XLSX from 'xlsx';
+import { VT_GREEN, EXTRA_FIELDS } from './constants';
+import type { LookupData } from './types';
 import { processRows, toTitleCase } from './services/matchingService';
 import { Header } from './components/Header';
 import { DropZone } from './components/DropZone';
@@ -15,7 +17,7 @@ const App = () => {
   const [state, dispatch] = useReducer(appReducer, initialState);
   
   const { 
-    lookupData, xlsxReady, loading, error, 
+    lookupData, loading, error,
     workbook, fileData, fileName, selectedColumn, 
     processing, results, filterType, 
     manualOverrides, ambiguousChoices, 
@@ -24,45 +26,29 @@ const App = () => {
   } = state;
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch(DATA_URL);
-        if (!response.ok) throw new Error("Failed to load town data.");
-        const data = await response.json();
-        dispatch({ type: 'INIT_DATA_LOADED', payload: data });
-      } catch (err: any) {
-        dispatch({ type: 'SET_ERROR', payload: err.message });
-      }
-    };
-    
-    const checkXLSX = setInterval(() => {
-      if (window.XLSX) {
-        dispatch({ type: 'XLSX_READY' });
-        clearInterval(checkXLSX);
-      }
-    }, 500);
-
-    fetchData();
-    return () => clearInterval(checkXLSX);
+    // The alias table is bundled with the app (data/vt-town-alias.json) and
+    // split into its own chunk so it loads on demand.
+    import('./data/vt-town-alias.json')
+      .then((mod) => dispatch({ type: 'INIT_DATA_LOADED', payload: mod.default as LookupData }))
+      .catch(() => dispatch({ type: 'SET_ERROR', payload: "Failed to load town data." }));
   }, []);
 
   const handleFile = (file: File) => {
-    if (!window.XLSX || !file) return;
-    
+    if (!file) return;
+
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
-        const bstr = evt.target?.result;
-        const wb = window.XLSX.read(bstr, { type: 'binary' });
-        dispatch({ 
-          type: 'LOAD_FILE_PREVIEW', 
-          payload: { workbook: wb, fileName: file.name } 
+        const wb = XLSX.read(evt.target?.result, { type: 'array' });
+        dispatch({
+          type: 'LOAD_FILE_PREVIEW',
+          payload: { workbook: wb, fileName: file.name }
         });
       } catch (err) {
         dispatch({ type: 'SET_ERROR', payload: "Error parsing file." });
       }
     };
-    reader.readAsBinaryString(file);
+    reader.readAsArrayBuffer(file);
   };
 
   const handleImportConfirm = (data: any[][]) => {
@@ -115,7 +101,7 @@ const App = () => {
   }, []);
 
   const downloadFile = () => {
-    if (!results || !window.XLSX || !fileData || !lookupData) return;
+    if (!results || !fileData || !lookupData) return;
     const originalHeaders = fileData[0];
     const getUniqueHeader = (base: string) => {
       let name = base; let counter = 1;
@@ -152,10 +138,10 @@ const App = () => {
       return [r.status, townVal, r.geoid || "", ...extraVals, ...r.originalRow];
     });
     
-    const ws = window.XLSX.utils.aoa_to_sheet([headers, ...rows]);
-    const wb = window.XLSX.utils.book_new();
-    window.XLSX.utils.book_append_sheet(wb, ws, "Cleaned");
-    window.XLSX.writeFile(wb, `Cleaned_${fileName}`);
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Cleaned");
+    XLSX.writeFile(wb, `Cleaned_${fileName}`);
   };
 
   const filteredResults = useMemo(() => {
@@ -254,16 +240,6 @@ const App = () => {
           </div>
         )}
       </main>
-
-      <style>{`
-        body { font-family: Arial, Helvetica, sans-serif !important; }
-        .custom-scrollbar::-webkit-scrollbar { height: 8px; width: 8px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f8fafc; border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; border: 2px solid #f8fafc; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .animate-in { animation: fadeIn 0.4s ease-out forwards; }
-      `}</style>
     </div>
   );
 };
