@@ -1,31 +1,39 @@
 import { describe, it, expect } from 'vitest';
 import { jaroWinkler, toTitleCase } from './matchingService';
 
-describe('Vermont Town Cleaner Logic', () => {
-  describe('jaroWinkler Algorithm', () => {
-    it('should identify exact matches correctly', () => {
-      expect(jaroWinkler('Montpelier', 'Montpelier')).toBe(1);
-    });
-
-    it('should provide high scores for minor typos (fuzzy matching)', () => {
-      const score = jaroWinkler('Burlington', 'Burlingten');
-      expect(score).toBeGreaterThan(0.85); // Your app's default threshold
-    });
-
-    it('should fail significantly different names', () => {
-      const score = jaroWinkler('Stowe', 'Rutland');
-      expect(score).toBeLessThan(0.7);
-    });
+describe('jaroWinkler', () => {
+  it('returns 1 for identical strings', () => {
+    expect(jaroWinkler('montpelier', 'montpelier')).toBe(1);
   });
 
-  describe('toTitleCase Utility', () => {
-    it('should format uppercase strings to title case', () => {
-      expect(toTitleCase('MONTPELIER')).toBe('Montpelier');
-    });
+  it('returns 0 when either string is empty', () => {
+    expect(jaroWinkler('', 'montpelier')).toBe(0);
+    expect(jaroWinkler('montpelier', '')).toBe(0);
+  });
 
-    it('should handle hyphenated names like "St. George"', () => {
-      // Note: adjust based on your specific implementation in matchingService.ts
-      expect(toTitleCase('SAINT GEORGE')).toBe('Saint George');
-    });
+  it('scores minor typos above the 0.85 fuzzy-match threshold', () => {
+    expect(jaroWinkler('burlington', 'burlingten')).toBeGreaterThan(0.85);
+  });
+
+  it('scores unrelated names below 0.7', () => {
+    expect(jaroWinkler('stowe', 'rutland')).toBeLessThan(0.7);
+  });
+});
+
+describe('toTitleCase', () => {
+  it('converts upper case to title case', () => {
+    expect(toTitleCase('MONTPELIER')).toBe('Montpelier');
+  });
+
+  it('capitalizes each word', () => {
+    expect(toTitleCase('SAINT GEORGE')).toBe('Saint George');
+  });
+
+  it('capitalizes after hyphens', () => {
+    expect(toTitleCase('wells-river')).toBe('Wells-River');
+  });
+
+  it('returns an empty string for empty input', () => {
+    expect(toTitleCase('')).toBe('');
   });
 });
